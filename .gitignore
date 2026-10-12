@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+PLAN.md
+DESIGN.md
