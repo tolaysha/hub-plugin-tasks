@@ -1,5 +1,5 @@
-"""12.10: задача-пример — у каждого один раз, чтобы сразу видеть, как выглядят «История» и «Прогресс»; удалил — не
-возвращается. Модель на неё не тратится и чужие сообщения к ней не цепляются."""
+"""12.10: the example task — once for everyone, to see at once what "History" and "Progress" look like; deleted — does
+not come back. No model is spent on it and other messages do not stick to it."""
 import os
 import sys
 import unittest
@@ -36,21 +36,21 @@ class Example(unittest.TestCase):
         self.assertLessEqual(max(e["ts"] for e in got), t["progress"]["at"])
 
     def test_talk_spans_specialists_and_is_almost_done(self):
-        # 12.10: видно, что в задачу попадает переписка не только с Хабом, но и со специалистами
+        # 12.10: shows that the task gets the conversation not only with the Hub but with specialists too
         tid = next(iter(self.reg["topics"]))
         got = registry.entries(self.reg, tid)
         self.assertGreaterEqual(len(got), 8)
         self.assertGreaterEqual(len({e["session"] for e in got} - {"hub"}), 3)
-        self.assertEqual(got[-1]["session"], "hub")   # «Перейти в сессию» ведёт в живую сессию
+        self.assertEqual(got[-1]["session"], "hub")   # "Go to session" leads to a live session
         crit = self.reg["topics"][tid]["progress"]["criteria"]
-        self.assertEqual(sum(not c["done"] for c in crit), 1)   # почти решена
+        self.assertEqual(sum(not c["done"] for c in crit), 1)   # almost solved
 
     def test_old_example_upgraded_in_place(self):
         reg = registry.load("/nonexistent/registry.json")
-        tid = registry.new_topic(reg, "Пример: старый", now=1)
+        tid = registry.new_topic(reg, "Example: old", now=1)
         reg["topics"][tid]["example"] = True
-        registry.add_entry(reg, tid, {"id": "x1", "who": "owner", "session": "hub", "text": "старое", "ts": 2})
-        reg["example_seeded"] = True                    # первая версия примера
+        registry.add_entry(reg, tid, {"id": "x1", "who": "owner", "session": "hub", "text": "old", "ts": 2})
+        reg["example_seeded"] = True                    # the first version of the example
         example.seed(reg, now=500)
         self.assertEqual(list(reg["topics"]), [tid])
         self.assertEqual(len(registry.entries(reg, tid)), len(example.TALK))
@@ -59,7 +59,7 @@ class Example(unittest.TestCase):
 
     def test_deleted_old_example_not_recreated_on_upgrade(self):
         reg = registry.load("/nonexistent/registry.json")
-        tid = registry.new_topic(reg, "Пример: старый", now=1)
+        tid = registry.new_topic(reg, "Example: old", now=1)
         reg["topics"][tid]["example"] = True
         registry.close_topic(reg, tid, now=2)
         reg["example_seeded"] = True
@@ -75,7 +75,7 @@ class Example(unittest.TestCase):
 
     def test_existing_hub_gets_example_too(self):
         reg = registry.load("/nonexistent/registry.json")
-        registry.new_topic(reg, "Своя", now=1)
+        registry.new_topic(reg, "Own one", now=1)
         example.seed(reg, now=2)
         self.assertEqual(len(reg["topics"]), 2)
         self.assertEqual(sum(1 for t in reg["topics"].values() if t.get("example")), 1)
@@ -83,10 +83,10 @@ class Example(unittest.TestCase):
     def test_no_model_for_example(self):
         tid = next(iter(self.reg["topics"]))
         posts = [{"id": "p2", "by": "owner", "text": '{"kind": "topic_summarize", "id": "%s", "force": true}' % tid}]
-        msg = {"m5": {"id": "m5", "session": "hub", "text": "почини вход", "created": 250, "from_owner": True}}
+        msg = {"m5": {"id": "m5", "session": "hub", "text": "fix the sign-in", "created": 250, "from_owner": True}}
         self.tick(posts, now=300, messages=msg)
         self.assertEqual(self.sums, [])
-        self.assertEqual(self.calls, [])   # открытых задач, кроме примера, нет — модель не зовём
+        self.assertEqual(self.calls, [])   # no open tasks besides the example — the model is not called
         self.assertEqual(engine.topics_for_model(self.reg), [])
 
 

@@ -1,91 +1,97 @@
-# Задачи — плагин Agents Hub
+# Tasks — an Agents Hub plugin
 
-Вкладка «Задачи» на странице хаба: вся переписка по одному делу — ваши сообщения, ответы сессий, итоги поручений —
-в одном месте, даже если дело шло через несколько сессий. У каждой задачи — «История» и «Прогресс»: задача,
-критерии приёмки с отметкой «сделано» и главные решения.
+A "Tasks" tab on the hub's page: the whole conversation on one piece of work — your messages, the sessions' replies,
+the results of assignments — in one place, even if the work went through several sessions. Each task has "History" and
+"Progress": the task, the acceptance criteria marked "done" and the main decisions.
 
-## Как пользоваться
+## How to use it
 
-- **Завести задачу** — в поле любой сессии `/new-task <что сделать>`: запрос уходит этой сессии как обычное
-  сообщение, а во вкладке появляется задача с коротким названием. Если в хабе настроена Jira
-  (`hub.json` → `jira`), то `/new-task IT-444` берёт существующую задачу из Jira (скиллом `jira-task`, если он у
-  сессии есть), а `/new-task <описание>` просит поискать такую задачу в Jira. Сама сессия в Jira ничего не заводит:
-  не нашла — предложит завести и работает без задачи Jira.
-  Без команды — коротко назовите дело в поле слева.
-- **Пишите сессиям как обычно** — сообщения про дело попадут в задачу сами. Ответ кнопкой «Ответить» на реплику
-  сессии попадает в ту же задачу точно и без модели. Ответ на карточку вопроса — тоже без модели, если сессия
-  спросила, работая над задачей (ваше последнее сообщение ей перед карточкой — в задаче, не раньше чем за 30 минут).
-- **«Прогресс»** собирается по переписке, когда вы его открываете (не чаще раза в 30 минут, если есть новое), или
-  сразу — кнопкой «Обновить».
-- **Ключ Jira** задачи — ссылкой в карточке, если он был в `/new-task`, сессия в первом ответе написала строку
-  «Задача Jira: IT-…» или позже прямо написала «завёл задачу IT-…» (если вы согласились завести).
-- **Порядок** — булавка закрепляет задачу сверху, карточки перетаскиваются (с клавиатуры — Alt+↑/↓). Хранится в
-  браузере.
-- **Удалить** — крестик; 5 секунд, пока идёт отсчёт, можно отменить. Задача уходит из вкладки, а её переписка
-  остаётся в архиве плагина на диске (`archive.json` в его папке состояния) — стереть совсем можно, удалив файл.
+- **Create a task** — in the input field of any session, `/new-task <what to do>`: the request goes to that session as
+  an ordinary message, and the tab gets a task with a short title. If the hub has Jira set up (`hub.json` → `jira`),
+  `/new-task PROJ-123` takes the existing Jira task (with the `jira-task` skill, if the session has it), and
+  `/new-task <description>` asks the session to look for such a task in Jira. The session creates nothing in Jira
+  itself: if it finds nothing, it offers to create one and works without a Jira task.
+  Without the command — name the work briefly in the field on the left.
+- **Write to sessions as usual** — messages about the work get into the task by themselves. A reply with the "Reply"
+  button on a session's line gets into the same task exactly and without the model. An answer to a question card does
+  too, if the session asked while working on the task (your last message to it before the card is in the task, no more
+  than 30 minutes earlier).
+- **"Progress"** is assembled from the conversation when you open it (at most once per 30 minutes, if there is
+  something new), or at once — with the "Refresh" button.
+- **The Jira key** of a task — as a link in the card, if it was in `/new-task`, if the session wrote the line
+  "Jira task: PROJ-…" in its first answer, or later wrote plainly that it created a task (if you agreed to create one).
+- **Order** — the pin keeps a task on top, cards can be dragged (from the keyboard — Alt+↑/↓). Kept in the browser.
+- **Delete** — the cross; for 5 seconds, while the countdown runs, it can be undone. The task leaves the tab, and its
+  conversation stays in the plugin's archive on disk (`archive.json` in its state folder) — to erase it completely,
+  delete the file.
 
-При первом запуске во вкладке — задача-пример: посмотрите и удалите.
+On the first start the tab has an example task: look at it and delete it.
 
-## Как работает
+The tab follows the page language: English by default, Russian when the hub's page is in Russian.
 
-Процесс плагина (`main.py`) раз в 3 секунды дочитывает журнал хаба (только чтение) и ведёт свой реестр задач:
+## How it works
 
-1. Ваше сообщение привязывается к задаче без модели, если это ответ кнопкой «Ответить», ответ на карточку вопроса,
-   заданного по задаче, сообщение исполнителю поручения этой задачи или запрос `/new-task`. Иначе — дешёвая модель решает, к какой из открытых задач оно
-   относится (или ни к какой).
-2. К сообщению добавляются ответ сессии на него и итоги поручений, которые от него пошли.
-3. Видимая часть реестра идёт на страницу через канал плагина (`hub feed tasks`).
+The plugin's process (`main.py`) reads the hub's journal every 3 seconds (read only) and keeps its own registry of tasks:
 
-## Расход модели
+1. Your message is bound to a task without the model if it is a reply with the "Reply" button, an answer to a question
+   card asked on the task, a message to the executor of this task's assignment, or a `/new-task` request. Otherwise a
+   cheap model decides which of the open tasks it belongs to (or none).
+2. The session's reply to the message and the results of the assignments that came from it are added to it.
+3. The visible part of the registry goes to the page through the plugin channel (`hub feed tasks`).
 
-Плагин сам делает **дополнительные запросы к Claude Haiku** (`claude -p --model haiku`) через вход Claude Code
-этого компьютера — тому же поставщику, что и сессии хаба; других получателей нет.
+## Model use
 
-| Что | Когда | Токенов за вызов |
+The plugin makes **its own extra requests to Claude Haiku** (`claude -p --model haiku`) through this computer's Claude
+Code sign-in — to the same provider as the hub's sessions; there are no other recipients.
+
+| What | When | Tokens per call |
 |---|---|---|
-| Разбор сообщения — к какой задаче | ваше сообщение, кроме «Ответить», ответов на карточки по задаче, исполнителю задачи и `/new-task` | ~2 тыс. (+~80 на каждую открытую задачу) |
-| Пересказ и «Прогресс» | открыли «Прогресс» (не чаще раза в 30 мин, если есть новое) или «Обновить» | ~10–15 тыс. (растёт с историей, до 40 последних записей) |
-| Название задачи | `/new-task` | ~1,3 тыс. |
+| Sorting a message — which task | your message, except "Reply", answers to cards on a task, messages to a task's executor and `/new-task` | ~2 thousand (+~80 per open task) |
+| Summary and "Progress" | "Progress" opened (at most once per 30 min, if there is something new) or "Refresh" | ~10–15 thousand (grows with the history, up to the last 40 entries) |
+| Task title | `/new-task` | ~1.3 thousand |
 
-**Пример:** 5 открытых задач, 7 часов работы, около 100 ваших сообщений и 10 пересказов за день — **~300 тыс.
-токенов Haiku в день**. С подпиской Claude — из её лимитов; по прайсу API Haiku 4.5 ($1 / $5 за 1 млн входных /
-выходных токенов) — до ~$0,5 в день. Меньше расход — чаще отвечайте кнопкой «Ответить» и реже жмите «Обновить».
+**Example:** 5 open tasks, 7 hours of work, about 100 of your messages and 10 summaries a day — **~300 thousand Haiku
+tokens a day**. With a Claude subscription — from its limits; at the API price of Haiku 4.5 ($1 / $5 per 1 million
+input / output tokens) — up to ~$0.5 a day. To spend less, answer with the "Reply" button more often and press
+"Refresh" less often.
 
-## Данные и доступы
+## Data and access
 
-- **Читает:** журнал хаба (только чтение) и настройки Jira из `hub.json` (адрес и проекты — для ссылок на задачи).
-- **Пишет:** только свою папку в состоянии хаба (`<состояние>/ext-<имя плагина>/`: реестр, курсор, архив удалённых задач)
-  и посты в свой канал — фактом `ext.post` через ящик ядра, от своего имени. В журнал напрямую не пишет, чужое
-  состояние не меняет.
-- **Сеть:** только вызовы модели выше — без инструментов, без MCP, без настроек (`--tools ""`,
-  `--strict-mcp-config`, `--setting-sources ""`). В модель уходят: ваше сообщение, 4 последние реплики разговора,
-  поручение сессии и список открытых задач; для пересказа — до 40 последних записей задачи.
-- **Страница:** только API плагинов хаба (`hub.feed`, `hub.postFeed`, `hub.post("/api/send")` — по вашей команде
-  `/new-task`). Переписка рисуется тем же модулем разметки, что лента хаба (с очисткой HTML).
-- **Jira:** плагин в Jira не ходит и ничего в ней не заводит. `/new-task` при настроенной Jira просит сессию найти
-  существующую задачу — это делает сессия своими инструментами; завести новую она только предлагает.
-- **Ключи:** плагин сам их не читает и не хранит. Вызов модели ядра берёт вход Claude Code этого компьютера (как
-  сторож хаба) и отдаёт его только процессу `claude`; аккаунты пула не используются — расход ложится на основной вход.
+- **Reads:** the hub's journal (read only) and the Jira settings from `hub.json` (the address and projects — for links
+  to tasks).
+- **Writes:** only its own folder in the hub's state (`<state>/ext-<plugin name>/`: the registry, the cursor, the archive
+  of deleted tasks) and posts to its own channel — as an `ext.post` fact through the core's spool, in its own name. It
+  does not write to the journal directly and does not change anyone else's state.
+- **Network:** only the model calls above — no tools, no MCP, no settings (`--tools ""`, `--strict-mcp-config`,
+  `--setting-sources ""`). The model receives: your message, the last 4 lines of the conversation, the session's
+  assignment and the list of open tasks; for a summary — up to the last 40 entries of the task.
+- **Page:** only the hub's plugin API (`hub.feed`, `hub.postFeed`, `hub.post("/api/send")` — on your `/new-task`
+  command). The conversation is drawn by the same markup module as the hub's feed (with HTML sanitizing).
+- **Jira:** the plugin does not go to Jira and creates nothing there. With Jira set up, `/new-task` asks the session to
+  find an existing task — the session does that with its own tools; it only offers to create a new one.
+- **Keys:** the plugin does not read or keep any itself. The core's model call takes this computer's Claude Code
+  sign-in (like the hub's watcher) and gives it only to the `claude` process; pool accounts are not used — the cost
+  goes to the main sign-in.
 
-## Установка
+## Installation
 
-Из каталога хаба («Настройки» → «Плагины») или ссылкой на этот репозиторий. Нужно:
+From the hub's catalog ("Settings" → "Plugins") or with a link to this repository. You need:
 
-- хаб с API плагинов 1.13+ (команды через «/»);
-- Python 3.12+ — `run.sh` найдёт его сам (свой путь — переменная `HUB_PYTHON`);
-- вход в Claude Code на этом компьютере (для вызовов Haiku);
-- по желанию — Jira в `hub.json` → `jira` (`url`, `projects`) и скилл `jira-task` у сессий.
+- a hub with plugin API 1.13+ (commands via "/"); the page language needs 1.25+, on older hubs the tab is in English;
+- Python 3.12+ — `run.sh` finds it itself (your own path — the `HUB_PYTHON` variable);
+- a Claude Code sign-in on this computer (for the Haiku calls);
+- optionally — Jira in `hub.json` → `jira` (`url`, `projects`) and the `jira-task` skill for the sessions.
 
-## Ограничения
+## Limitations
 
-- Модель может отнести сообщение не к той задаче или пропустить его; надёжнее — «Ответить».
-- Перетаскивание карточек не работает на телефоне; порядок и закрепление — в браузере, не на хабе.
-- Плагин опирается на внутренние модули хаба (вызов модели сторожа, разметка ленты): обновление хаба может их
-  поменять. Страница тогда показывает переписку простым текстом, а процесс работает без модели: задачи заводятся,
-  «Ответить» и ответы на карточки привязываются, остальные сообщения и «Прогресс» — нет.
+- The model may put a message into the wrong task or miss it; "Reply" is more reliable.
+- Dragging cards does not work on a phone; order and pinning live in the browser, not on the hub.
+- The plugin relies on internal modules of the hub (the watcher's model call, the feed's markup): a hub update may
+  change them. Then the page shows the conversation as plain text, and the process works without the model: tasks are
+  created, "Reply" and answers to cards are bound, other messages and "Progress" are not.
 
-## Тесты
+## Tests
 
 ```
-PYTHONPATH=<папка хаба> python3.12 -m unittest discover -s tests
+PYTHONPATH=<hub folder> python3.12 -m unittest discover -s tests
 ```

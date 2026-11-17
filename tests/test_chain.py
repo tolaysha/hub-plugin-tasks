@@ -1,4 +1,4 @@
-"""Поручения задачи — по `root` ядра (core/chain.py), не по догадке о сессиях и времени."""
+"""A task's assignments — by the core's `root` (core/chain.py), not by a guess about sessions and time."""
 import os
 import sys
 import unittest
@@ -28,7 +28,7 @@ class Chain(unittest.TestCase):
         self.assertEqual(chain.inherit(st(d("d1", "backend", 10, root=None, **{"for": "m1"})), "m1"), [])
 
     def test_later_task_of_same_session_with_other_root_not_taken(self):
-        # агент выдал поручение через дни по другому делу — у него свой root
+        # the agent gave an assignment days later on another matter — it has its own root
         s = st(d("d1", "hub-dev", 10, root="m1"), d("d2", "visible-failures", 99, root="m7", for_session="hub-dev"))
         self.assertEqual(chain.inherit(s, "m1"), ["d1"])
 

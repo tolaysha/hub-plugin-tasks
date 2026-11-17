@@ -1,15 +1,16 @@
-"""Что попадает в историю темы вокруг сообщения владельца (владелец 08.10: «всё, что вокруг моего сообщения»): само
-сообщение, ответы сессии на него — до следующего входящего сообщения в эту сессию, и итоги поручений, которые от
-него пошли по цепочке (chain.py). Окно — до любого входящего, не только владельца: загруженная сессия (хаб) дальше
-отвечает уже другим, и это не история задачи (проверка на живом журнале 09.10); итог поручения придёт по цепочке
-(root ядра, chain.py).
-Ленты сессий — Tail.reader.timelines: строки «in» (сообщения в сессию) и «out» (её речь)."""
+"""What goes into a topic's history around an owner's message (owner 08.10: "everything around my message"): the
+message itself, the session's replies to it — up to the next incoming message to that session, and the results of the
+assignments that came from it down the chain (chain.py). The window ends at any incoming message, not only the owner's:
+a busy session (the hub) goes on answering others, and that is not the task's history (checked on a live journal
+09.10); an assignment's result comes through the chain (the core's root, chain.py).
+Session timelines — Tail.reader.timelines: "in" rows (messages to the session) and "out" rows (its speech)."""
 import chain
 
 
 def around(line, mid):
-    """Реплики сессии после сообщения mid в её ленте: ([строки out], закрыто ли окно следующим входящим); mid в ленте
-    нет (обрезана или сообщение ещё в очереди сессии) — None: решает движок по возрасту якоря."""
+    """The session's lines after message mid in its timeline: ([out rows], whether the window is closed by the next
+    incoming message); mid is not in the timeline (cut off, or the message still waits in the session's queue) — None:
+    the engine decides by the anchor's age."""
     got, after = [], False
     for item in line:
         if not after:
@@ -23,15 +24,16 @@ def around(line, mid):
 
 
 def entries(state, timelines, mid, anchor):
-    """Записи истории по якорю: ([{id, who, session, text, ts}], закрыто ли окно ответов сессии, [id поручений]).
-    Живая лента обрезана (последние строки; после ротации журнала — с нуля), поэтому ответ ловится, пока окно открыто
-    (тик — раз в 3 с), и дальше хранится в реестре: пересборка его не стирает (registry.rebuild)."""
+    """History entries for an anchor: ([{id, who, session, text, ts}], whether the session's reply window is closed,
+    [assignment ids]). The live timeline is cut (the last rows; after a journal rotation — from zero), so a reply is
+    caught while the window is open (a tick every 3 s) and kept in the registry from then on: a rebuild does not erase
+    it (registry.rebuild)."""
     session = anchor["session"]
     line = timelines.get(session) or []
     got = [{"id": mid, "who": "owner", "session": session, "text": anchor["text"], "ts": anchor["ts"]}]
     replies, closed = around(line, mid)
-    if replies:   # ответ сессии — итог хода, последняя её реплика; пока ход идёт, запись обновляется на месте
-        last = replies[-1]   # (09.10: промежуточные «тесты красные…», «добавляю стили…» в истории — шум)
+    if replies:   # the session's reply is the turn's result, its last line; while the turn runs, the entry updates in place
+        last = replies[-1]   # (09.10: intermediate "tests are red…", "adding styles…" in the history are noise)
         got.append({"id": f"{mid}:re", "who": "session", "session": session, "text": last["text"], "ts": last["ts"]})
     dels = chain.inherit(state, mid)
     for did in dels:

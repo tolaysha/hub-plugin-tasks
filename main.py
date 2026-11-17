@@ -1,14 +1,15 @@
-"""Процесс личного расширения «Задачи» (hub-up: HUB_STATE_DIR, PYTHONPATH на код хаба, HUB_EXTENSION). Читает журнал
-хаба через core.tail.Tail — готовое состояние и ленты сессий, как у страницы, — и раз в TICK с делает тик (engine.py):
-задачи, привязка сообщений владельца, история, пересказ. Потом сверяет канал плагина с реестром (mirror.py) и постит
-недостающее от имени плагина. Реестр и курсор — в <состояние>/ext-tasks, не в папке расширения: файл, который
-меняется каждый тик, перезагружал бы открытые вкладки (страница следит за mtime файлов расширения)."""
+"""The process of the "Tasks" extension (hub-up: HUB_STATE_DIR, PYTHONPATH to the hub's code, HUB_EXTENSION). Reads the
+hub's journal through core.tail.Tail — the ready state and session timelines, as the page has them — and every TICK s
+makes a tick (engine.py): tasks, binding the owner's messages, history, summary. Then it checks the plugin channel
+against the registry (mirror.py) and posts what is missing in the plugin's name. The registry and cursor live in
+<state>/ext-tasks, not in the extension folder: a file that changes every tick would reload open tabs (the page watches
+the mtime of the extension's files)."""
 import json
 import os
 import sys
 import time
 
-sys.dont_write_bytecode = True   # без __pycache__ в папке расширения — та же причина
+sys.dont_write_bytecode = True   # no __pycache__ in the extension folder — the same reason
 
 from core import spool  # noqa: E402
 from core.daemon import default_state_dir  # noqa: E402
@@ -23,10 +24,10 @@ import summary  # noqa: E402
 
 NAME = os.environ.get("HUB_EXTENSION", "tasks")
 STATE = default_state_dir()
-OWN = mirror.state_dir(STATE, NAME)   # из каталога — «<аккаунт>:tasks»: своя папка, канал — короткое имя
+OWN = mirror.state_dir(STATE, NAME)   # from the catalog — "<account>:tasks": its own folder, the channel — the short name
 REG_PATH = os.path.join(OWN, "registry.json")
 CURSOR_PATH = os.path.join(OWN, "cursor.json")
-ARCHIVE_PATH = os.path.join(OWN, "archive.json")   # записи и якоря удалённых задач (registry.archive_closed)
+ARCHIVE_PATH = os.path.join(OWN, "archive.json")   # entries and anchors of deleted tasks (registry.archive_closed)
 TICK = 3
 
 
@@ -35,19 +36,19 @@ def load_cursor(now):
         with open(CURSOR_PATH, encoding="utf-8") as f:
             cursor = json.load(f)
         if not isinstance(cursor, dict) or "last_message" not in cursor:
-            raise ValueError("не курсор")
+            raise ValueError("not a cursor")
         return cursor
     except FileNotFoundError:
         return engine.fresh_cursor(now)
-    except (OSError, ValueError):   # битый: старые просьбы канала не разбирать заново (engine.collect_requests)
-        print("tasks: курсор не читается — начинаю с текущего места канала", file=sys.stderr, flush=True)
+    except (OSError, ValueError):   # broken: do not parse the channel's old requests again (engine.collect_requests)
+        print("tasks: the cursor is unreadable — starting from the current place of the channel", file=sys.stderr, flush=True)
         return {**engine.fresh_cursor(now), "feed_seq": None}
 
 
 def take_rewind(cursor):
-    """Разобрать заново слова владельца с момента since (после правки привязки, 12.10): файл rewind.json рядом с реестром
-    кладут руками, пока процесс жив, — курсор он держит в памяти, поэтому правка cursor.json снаружи затёрлась бы.
-    Уже привязанные сообщения не трогаются (engine.tick пропускает якоря)."""
+    """Parse the owner's words again from the moment since (after a fix of the binding, 12.10): the file rewind.json next
+    to the registry is put by hand while the process runs — it keeps the cursor in memory, so an edit of cursor.json from
+    outside would be overwritten. Messages already bound are not touched (engine.tick skips anchors)."""
     path = os.path.join(OWN, "rewind.json")
     try:
         with open(path, encoding="utf-8") as f:
@@ -56,12 +57,12 @@ def take_rewind(cursor):
     except (OSError, ValueError, KeyError, TypeError):
         return False
     cursor["last_message"] = min(cursor["last_message"], since)
-    print(f"tasks: разбираю заново слова владельца с {since}", file=sys.stderr, flush=True)
+    print(f"tasks: parsing the owner's words again from {since}", file=sys.stderr, flush=True)
     return True
 
 
 def jira_settings():
-    """Jira хаба (hub.json → jira: url, projects) — те же, что подсвечивают ключи на странице (modules/jira/links.py)."""
+    """The hub's Jira (hub.json → jira: url, projects) — the same that highlight keys on the page (modules/jira/links.py)."""
     try:
         from core.catalog import config_path
         from modules.jira import links
@@ -76,7 +77,7 @@ def save_json(path, data):
 
 
 def post(text):
-    # пост процесса плагина — от его имени, как `hub post` из процесса плагина (bin/hub: put)
+    # a post of the plugin process — in its name, like `hub post` from a plugin process (bin/hub: put)
     spool.put(os.path.join(STATE, "spool"), "ext.post", None,
               {"plugin": mirror.channel(NAME), "text": text, "channel": "plugin", "owner": False, "sender": NAME},
               src=f"ext:{NAME}")
@@ -84,23 +85,23 @@ def post(text):
 
 def main():
     reg, cursor, sent = registry.load(REG_PATH), load_cursor(time.time()), {}
-    if example.seed(reg, time.time()):   # задача-пример — один раз на хаб
+    if example.seed(reg, time.time()):   # the example task — once per hub
         registry.save(REG_PATH, reg)
     tail = Tail(os.path.join(STATE, "journal.jsonl"))
-    jira = jira_settings()   # настройки хаба меняются редко — с перезапуском расширения
-    print(f"tasks: старт, задач {len(reg['topics'])}, состояние {OWN}", file=sys.stderr, flush=True)
+    jira = jira_settings()   # the hub's settings change rarely — with a restart of the extension
+    print(f"tasks: start, tasks {len(reg['topics'])}, state {OWN}", file=sys.stderr, flush=True)
     archive = registry.load_archive(ARCHIVE_PATH)
-    if registry.archive_closed(reg, archive):   # удалённые до архива (12.10) — разом при старте
+    if registry.archive_closed(reg, archive):   # deleted before the archive existed (12.10) — at once on start
         registry.save(ARCHIVE_PATH, archive)
         registry.save(REG_PATH, reg)
     last_seq, last_full = None, 0.0
     while True:
-        tail.poll()   # читает только этот поток — без блокировки
+        tail.poll()   # only this thread reads — no lock
         state, timelines = tail.reader.state, tail.reader.timelines
         now = time.time()
         rewound = take_rewind(cursor)
         if not rewound and not engine.busy_round(state.get("seq"), last_seq, now, last_full):
-            time.sleep(TICK)   # в журнале ничего нового — без копий реестра (владелец 12.10)
+            time.sleep(TICK)   # nothing new in the journal — no copies of the registry (owner 12.10)
             continue
         last_seq, last_full = state.get("seq"), now
         posts = list((state.get("feeds") or {}).get(mirror.channel(NAME)) or [])
@@ -112,7 +113,7 @@ def main():
         for text in mirror.to_post(mirror.want(reg), posts, sent, now, author=mirror.author(NAME)):
             post(text)
         if {k: (len(v["entries"]), len(v["anchors"])) for k, v in archive.items()} != shelf:
-            save_json(ARCHIVE_PATH, archive)   # архив — до реестра: сбой между ними не теряет записи
+            save_json(ARCHIVE_PATH, archive)   # the archive before the registry: a crash between them loses no entries
         if json.dumps(reg, sort_keys=True) != reg_before:
             save_json(REG_PATH, reg)
         save_json(CURSOR_PATH, cursor)

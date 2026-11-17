@@ -1,15 +1,15 @@
-"""Поручения, выросшие из сообщения владельца, — по явной связи ядра, без догадок: у поручения `root` — слово
-владельца, с которого началась цепочка (core/chain.py: task_root; у старых — `for`). Его ставит ядро: задача по слову
-владельца, исполнитель `hub task run` — ход, в котором его просили, подзадача исполнителя — начало его задачи.
-(09.10: прежняя догадка «поручение той же сессии, выданное позже» тянула в задачу чужие поручения агента, а
-исполнителя `hub task run` без --for не находила.)"""
+"""Assignments that grew from an owner's message — by the core's explicit link, no guessing: an assignment's `root` is the
+owner's word the chain started from (core/chain.py: task_root; older ones have `for`). The core sets it: a task on the
+owner's word, an executor `hub task run` — the turn it was asked in, an executor's subtask — the start of its task.
+(09.10: the earlier guess "an assignment of the same session, given later" pulled the agent's unrelated assignments
+into the task and did not find an executor `hub task run` without --for.)"""
 
 
-LIVE = ("working", "waiting-owner")   # поручение в работе (core/machines.py: DELEGATION)
+LIVE = ("working", "waiting-owner")   # the assignment is in work (core/machines.py: DELEGATION)
 
 
 def task_root(d):
-    return d["root"] if "root" in d else d.get("for")   # как core/chain.py: task_root
+    return d["root"] if "root" in d else d.get("for")   # as core/chain.py: task_root
 
 
 def inherit(state, mid):

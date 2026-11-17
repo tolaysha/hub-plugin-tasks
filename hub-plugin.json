@@ -1,8 +1,8 @@
 {
   "name": "tasks",
   "icon": "web/plugin-icon.svg",
-  "description": "Всё по одному делу — в одной карточке: переписка из разных сессий, прогресс по критериям приёмки и главные решения. Новая задача — командой /new-task, можно по ключу существующей задачи Jira.",
-  "why": "Дело часто идёт через несколько сессий, и нить теряется: где последнее сообщение, что решили, что осталось. Здесь история, критерии приёмки и решения по делу — в одной карточке. Расход: плагин сам зовёт Claude Haiku (разбор ваших сообщений, пересказ по запросу) — около 300 тыс. токенов в день при 5 задачах и 7 часах работы, с основного входа Claude Code (не пула); тот же поставщик, что у сессий. «Удалить» прячет задачу, переписка остаётся в архиве плагина. Сам в Jira ничего не заводит.",
+  "description": "Everything about one piece of work in one card: messages from different sessions, progress on the acceptance criteria and the main decisions. A new task with the /new-task command, from the key of an existing Jira task too.",
+  "why": "Work often goes through several sessions, and the thread gets lost: where the last message is, what was decided, what is left. Here the history, the acceptance criteria and the decisions on the work are in one card. Cost: the plugin calls Claude Haiku itself (sorting your messages, a summary on request) — about 300 thousand tokens a day with 5 tasks and 7 hours of work, from the main Claude Code sign-in (not the pool); the same provider as the sessions. \"Delete\" hides a task, its conversation stays in the plugin's archive. It creates nothing in Jira itself.",
   "version": "1.1.0",
   "hub": "^1.13",
   "web": "web/main.js",

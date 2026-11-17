@@ -1,39 +1,39 @@
-"""Задача-пример (владелец 12.10): у каждого хаба один раз — сразу видно, как выглядят «История» и «Прогресс»;
-удалил крестиком — не возвращается (reg["example_seeded"]). Модель на неё не тратится: движок не отдаёт её
-классификатору и не пересказывает."""
+"""The example task (owner 12.10): once per hub — shows at once what "History" and "Progress" look like; deleted with
+the cross — it does not come back (reg["example_seeded"]). No model is spent on it: the engine does not give it to the
+classifier and does not summarize it."""
 import registry
 
-VERSION = 2   # содержание примера; выросло — открытый пример прежней версии обновляется на месте
-TITLE = "Пример: починить вход по ссылке"
-SUMMARY = ("Пример задачи: почти готово, осталось проверить на проде. Посмотрите «Историю» и «Прогресс», потом "
-           "удалите её крестиком.")
-# переписка владельца с Хабом и специалистами по одному делу — как её собирает вкладка (владелец 12.10: видно, что
-# в задачу попадают и другие сессии; задача почти решена)
+VERSION = 2   # the example's content; grew — an open example of a previous version is updated in place
+TITLE = "Example: fix the sign-in link"
+SUMMARY = ("An example task: almost done, only a check on production is left. Look at \"History\" and \"Progress\", "
+           "then delete it with the cross.")
+# the owner's conversation with the Hub and specialists about one piece of work — as the tab collects it (owner 12.10:
+# shows that other sessions get into the task too; the task is almost solved)
 TALK = [
-    ("owner", "hub", "/new-task Ссылка для входа из письма открывает пустую страницу — почини"),
-    ("session", "hub", "Завёл задачу. Причину ищет backend, страницу входа проверит frontend, в конце — прогон у qa."),
-    ("session", "backend", "Причина: ссылка живёт 10 минут, а письмо часто доходит позже. Предлагаю срок 24 часа и "
-                           "одноразовую ссылку. Делать?"),
-    ("owner", "backend", "Да, 24 часа, и пусть работает один раз."),
-    ("session", "backend", "Сделал: ссылка живёт 24 часа и срабатывает один раз, тесты добавил. MR открыт."),
-    ("session", "frontend", "Пустая страница была ещё из-за ошибки на клиенте при устаревшей ссылке. Теперь "
-                            "показываем «Ссылка устарела — отправить новую?». Проверил в Chrome и Safari."),
-    ("owner", "qa", "Прогони вход по ссылке на стейдже целиком."),
-    ("session", "qa", "На стейдже всё прошло: новая ссылка входит, повторная — нет, устаревшая предлагает "
-                      "отправить новую. Замечаний нет."),
-    ("owner", "hub", "Выкатывай."),
-    ("session", "hub", "Выкатил на прод. Осталось проверить вход по ссылке на проде — проверю и напишу."),
+    ("owner", "hub", "/new-task The sign-in link from the email opens a blank page — fix it"),
+    ("session", "hub", "Task created. backend looks for the cause, frontend checks the sign-in page, qa runs it at the end."),
+    ("session", "backend", "Cause: the link lives 10 minutes, and the email often arrives later. I suggest 24 hours and "
+                           "a one-time link. Go ahead?"),
+    ("owner", "backend", "Yes, 24 hours, and let it work once."),
+    ("session", "backend", "Done: the link lives 24 hours and works once, tests added. The MR is open."),
+    ("session", "frontend", "The blank page was also caused by a client error on an expired link. Now we show "
+                            "\"The link has expired — send a new one?\". Checked in Chrome and Safari."),
+    ("owner", "qa", "Run the whole sign-in by link on staging."),
+    ("session", "qa", "Everything passed on staging: a new link signs in, a repeated one does not, an expired one offers "
+                      "to send a new one. No remarks."),
+    ("owner", "hub", "Roll it out."),
+    ("session", "hub", "Rolled out to production. Left: check the sign-in by link on production — I'll check and report."),
 ]
 PROGRESS = {
-    "goal": "Вход по ссылке из письма открывает аккаунт",
-    "criteria": [{"text": "Ссылка из письма открывает аккаунт", "done": True},
-                 {"text": "Ссылка живёт 24 часа и срабатывает один раз", "done": True},
-                 {"text": "Устаревшая ссылка предлагает отправить новую", "done": True},
-                 {"text": "Тесты и проверка в Chrome и Safari", "done": True},
-                 {"text": "Прогон на стейдже без замечаний", "done": True},
-                 {"text": "Проверено на проде", "done": False}],
-    "decisions": ["Срок ссылки — 24 часа", "Ссылка одноразовая", "Устаревшая — предложить новую",
-                  "Выкатывать после прогона qa на стейдже"],
+    "goal": "The sign-in link from the email opens the account",
+    "criteria": [{"text": "The link from the email opens the account", "done": True},
+                 {"text": "The link lives 24 hours and works once", "done": True},
+                 {"text": "An expired link offers to send a new one", "done": True},
+                 {"text": "Tests and a check in Chrome and Safari", "done": True},
+                 {"text": "A staging run without remarks", "done": True},
+                 {"text": "Checked on production", "done": False}],
+    "decisions": ["The link lives 24 hours", "The link is one-time", "Expired — offer a new one",
+                  "Roll out after the qa run on staging"],
 }
 
 
@@ -42,7 +42,7 @@ def seed(reg, now):
     if done == VERSION:
         return None
     reg["example_seeded"] = VERSION
-    if done:   # пример прежней версии: открыт — обновить на месте, удалён — не возвращать
+    if done:   # an example of a previous version: open — update in place, deleted — do not bring back
         tid = next((t["id"] for t in registry.open_topics(reg) if t.get("example")), None)
         if tid:
             fill(reg, tid, now)
@@ -56,7 +56,7 @@ def fill(reg, tid, now):
     t = reg["topics"][tid]
     t.update(title=TITLE, example=True, summary=SUMMARY, rev=t.get("rev", 0) + 1)
     reg["entries"][tid] = {}
-    for i, (who, session, text) in enumerate(TALK):   # переписка за последние часы, по полчаса между репликами
+    for i, (who, session, text) in enumerate(TALK):   # a conversation over the last hours, half an hour between lines
         registry.add_entry(reg, tid, {"id": f"x{i + 1}", "who": who, "session": session, "text": text,
                                       "ts": now - (len(TALK) - i) * 1800})
     t["progress"] = {**PROGRESS, "at": now}

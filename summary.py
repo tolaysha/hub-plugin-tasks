@@ -1,30 +1,30 @@
-"""Пересказ задачи для карточки и её прогресс для «Прогресса» — одним вызовом дешёвой модели по переписке, тем же
-приёмом, что recap у сторожа (modules/watch/watch.py): по просьбе страницы (engine.py), не чаще раза в EVERY. Сбой
-модели — None, прежнее остаётся. «Прогресс» (владелец 11.10) — на одну страницу: задача, критерии приёмки с отметкой
-«сделан», самые важные решения коротко."""
+"""A task's summary for the card and its progress for "Progress" — in one call of a cheap model over the conversation,
+the same way as the watcher's recap (modules/watch/watch.py): at the page's request (engine.py), at most once per EVERY.
+A model failure — None, the previous one stays. "Progress" (owner 11.10) fits one page: the task, the acceptance
+criteria marked "done", the most important decisions in short."""
 import sys
 
 from classify import real_ask
 
-EVERY = 1800       # с между пересказами одной задачи по «Прогрессу»; «Обновить» — без ожидания
-LAST = 40          # последних записей в пересказ
-ENTRY_MAX = 1500   # знаков одной записи в пересказ
-CRITERIA = 6       # критериев приёмки — вместе с решениями влезает в один экран
-DECISIONS = 4      # самых важных решений
-ITEM_MAX = 110     # знаков одного пункта — одна-две строки
+EVERY = 1800       # s between summaries of one task on "Progress"; "Refresh" — without waiting
+LAST = 40          # last entries into the summary
+ENTRY_MAX = 1500   # characters of one entry into the summary
+CRITERIA = 6       # acceptance criteria — together with the decisions they fit one screen
+DECISIONS = 4      # most important decisions
+ITEM_MAX = 110     # characters of one item — one or two lines
 
 SCHEMA = {"type": "object", "required": ["summary", "goal", "criteria", "decisions"], "properties": {
     "summary": {"type": "string"}, "goal": {"type": "string"},
     "criteria": {"type": "array", "items": {"type": "object", "required": ["text", "done"], "properties": {
         "text": {"type": "string"}, "done": {"type": "boolean"}}}},
     "decisions": {"type": "array", "items": {"type": "string"}}}}
-PROMPT = ("На входе — переписка владельца с сессиями по одной его задаче. Ответь JSON по-русски, очень коротко, без воды: "
-          "summary — одно предложение, на чём задача стоит сейчас; goal — что нужно получить в итоге, одним коротким "
-          "предложением; criteria — критерии приёмки: по чему владелец поймёт, что задача готова, до 6 пунктов по 3–10 "
-          "слов (если в переписке есть критерии приёмки, AC, задачи Jira — бери ровно их, своих не придумывай), done — true, "
-          "только если по переписке это уже сделано и проверено; decisions — до 4 самых важных "
-          "решений владельца, по 3–12 слов, без мелочей. Только то, что есть в переписке; нечего сказать — пустой "
-          "список. Ответь только JSON.")
+PROMPT = ("The input is the owner's conversation with sessions about one of their tasks. Answer with JSON in the "
+          "language of the conversation, very briefly, no filler: summary — one sentence on where the task stands now; "
+          "goal — what must be achieved in the end, in one short sentence; criteria — acceptance criteria: how the owner "
+          "will know the task is done, up to 6 items of 3–10 words (if the conversation has acceptance criteria, AC, "
+          "Jira tasks — take exactly those, do not invent your own), done — true only if, by the conversation, it is "
+          "already done and checked; decisions — up to 4 most important decisions of the owner, 3–12 words each, no "
+          "trifles. Only what is in the conversation; nothing to say — an empty list. Answer with JSON only.")
 
 
 def _line(x):
@@ -47,13 +47,13 @@ def _decisions(value):
 def summarize(title, entries, ask=real_ask):
     if not entries:
         return None
-    text = f"Задача: {title}\n" + "\n".join(
-        f"{'владелец' if e['who'] == 'owner' else e.get('session') or 'сессия'}: {e['text'][:ENTRY_MAX]}"
+    text = f"Task: {title}\n" + "\n".join(
+        f"{'owner' if e['who'] == 'owner' else e.get('session') or 'session'}: {e['text'][:ENTRY_MAX]}"
         for e in entries[-LAST:])
     try:
         out = ask(PROMPT, text, SCHEMA)
     except (OSError, ValueError, TypeError) as e:
-        print(f"tasks: пересказ не удался: {e}", file=sys.stderr, flush=True)
+        print(f"tasks: summary failed: {e}", file=sys.stderr, flush=True)
         return None
     if not isinstance(out, dict) or not str(out.get("summary") or "").strip():
         return None

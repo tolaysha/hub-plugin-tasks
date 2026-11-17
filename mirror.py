@@ -1,30 +1,33 @@
-"""Канал плагина `tasks` — единственный путь данных к странице (API плагинов 1.2). Он хранит последние 500 постов,
-пост — до 2000 знаков. Поэтому канал не журнал истории, а зеркало реестра: каждый тик считаем, какие посты должны
-быть видны (want), и постим только недостающее — вытесненное, изменившееся, новое (to_post). Длинная запись режется
-на части (part/of у одного id) и склеивается на странице — владелец 08.10 просил сообщения не обрезать."""
+"""The plugin channel `tasks` is the only data path to the page (plugin API 1.2). It keeps the last 500 posts, a post
+is up to 2000 characters. So the channel is not a history log but a mirror of the registry: every tick we work out
+which posts must be visible (want) and post only what is missing — pushed out, changed, new (to_post). A long entry is
+cut into parts (part/of under one id) and joined on the page — the owner asked 08.10 not to cut messages."""
 import json
 
 import registry
 
-AUTHOR = "плагин tasks"   # так ядро подписывает посты процесса плагина (core/reducer.py: _ext_post); личная установка
-LIMIT = 2000              # потолок поста в ядре
-BUDGET = 350              # постов зеркала из 500 канала: остальное — посты владельца (создать, удалить)
-HOLD = 120                # с, сколько не повторять отправленный пост, пока ядро его не записало
+# a core protocol value, not text to translate: how the core signs the plugin process's posts (core/reducer.py:
+# post_row); a local install
+AUTHOR = "плагин tasks"
+LIMIT = 2000              # the core's post ceiling
+BUDGET = 350              # mirror posts out of the channel's 500: the rest — the owner's posts (create, delete)
+HOLD = 120                # s, how long not to repeat a sent post while the core has not recorded it
 
 
 def channel(name):
-    """Канал плагина — короткое имя: из каталога плагин зовётся «<аккаунт>:tasks», а ядро пускает в имя канала только
-    латиницу, цифры и дефис (страница берёт так же: static/js/ext.js)."""
+    """The plugin channel is the short name: from the catalog the plugin is called "<account>:tasks", and the core lets
+    only Latin letters, digits and hyphen into a channel name (the page takes it the same way: static/js/ext.js)."""
     return name.split(":")[-1]
 
 
 def author(name):
-    """Подпись постов процесса — полное имя (core/reducer.py: _ext_post — «плагин <HUB_EXTENSION>»)."""
+    """The author of the process's posts — the full name; "плагин <HUB_EXTENSION>" is the core's protocol value
+    (core/reducer.py: post_row), not text to translate."""
     return f"плагин {name}"
 
 
 def state_dir(state, name):
-    """Своя папка в состоянии хаба: личная установка — ext-tasks, из каталога — ext-<аккаунт>-tasks."""
+    """Its own folder in the hub's state: a local install — ext-tasks, from the catalog — ext-<account>-tasks."""
     import os
     return os.path.join(state, "ext-" + name.replace(":", "-"))
 
@@ -42,7 +45,7 @@ def key(payload):
 
 
 def _parts(base, text):
-    """Части текста записи так, чтобы каждый пост с обвязкой влез в LIMIT (экранирование в JSON удлиняет текст)."""
+    """Parts of an entry's text so that every post with its wrapping fits LIMIT (escaping in JSON makes the text longer)."""
     parts, rest = [], text
     while rest or not parts:
         n = len(rest)
@@ -54,17 +57,17 @@ def _parts(base, text):
 
 
 def want(reg, budget=BUDGET):
-    """Посты, которые должны быть в канале: открытые темы и их записи, свежие — первыми в пределах бюджета. Бюджет
-    задачи делят по очереди, по записи за круг (ревью 12.10: болтливая вытесняла всю историю тихой); count в посте
-    темы — сколько записей всего: страница покажет «последние K из N»."""
+    """Posts that must be in the channel: open topics and their entries, the freshest first within the budget. Tasks
+    share the budget in turn, one entry per round (review 12.10: a chatty one pushed out the whole history of a quiet
+    one); count in a topic post — how many entries there are in total: the page shows "the last K of N"."""
     topics = registry.open_topics(reg)
-    # rev — номер сборки истории задачи: пересобрали (registry.rebuild) — страница прячет записи прежней сборки
+    # rev — the build number of a task's history: rebuilt (registry.rebuild) — the page hides the entries of the previous build
     out = [{"kind": "topic", "rev": t.get("rev", 0), "count": len(registry.entries(reg, t["id"])),
             **{k: t.get(k) for k in ("id", "title", "state", "created", "summary", "jira", "example")}} for t in topics]
-    for t in topics:   # прогресс — отдельными постами: с пятью полями он не влезает в пост темы
+    for t in topics:   # progress — as separate posts: with five fields it does not fit the topic post
         if t.get("progress"):
             out += _parts({"kind": "progress", "topic": t["id"]}, json.dumps(t["progress"], ensure_ascii=False))
-    queues = {t["id"]: registry.entries(reg, t["id"])[::-1] for t in topics}   # свежие — первыми
+    queues = {t["id"]: registry.entries(reg, t["id"])[::-1] for t in topics}   # the freshest first
     rev = {t["id"]: t.get("rev", 0) for t in topics}
     picked, room = [], budget - len(out)
     while queues:
@@ -76,16 +79,17 @@ def want(reg, budget=BUDGET):
             posts = _parts({"kind": "entry", "topic": tid, "rev": rev[tid],
                             **{k: e[k] for k in ("id", "who", "session", "ts")}}, e["text"])
             if len(posts) > room:
-                del queues[tid]   # следующая запись этой задачи не влезла — её старые тоже не берём
+                del queues[tid]   # the next entry of this task did not fit — its older ones are not taken either
                 continue
             room -= len(posts)
             picked.append(((e["ts"], e["id"]), posts))
-    # постим старое раньше нового: канал вытесняет с начала, свежее уходит последним
+    # post the old before the new: the channel pushes out from the start, the freshest goes last
     return out + [p for _, posts in sorted(picked, key=lambda x: x[0]) for p in posts]
 
 
 def to_post(wanted, posts, sent, now, author=AUTHOR):
-    """Тексты постов, которых в канале нет в нужном виде. sent — {ключ: (текст, когда)}: что уже отправлено и в пути."""
+    """Texts of the posts that are not in the channel in the needed form. sent — {key: (text, when)}: what is already
+    sent and on its way."""
     have = {}
     for p in posts:
         if p.get("by") != author:
@@ -94,8 +98,8 @@ def to_post(wanted, posts, sent, now, author=AUTHOR):
             have[key(json.loads(p["text"]))] = p["text"]
         except (ValueError, TypeError, AttributeError):
             continue
-    # задача, которой больше нет среди открытых, а в канале её пост «открыта», — пост «закрыта» (ревью 12.10: пост
-    # процесса, вышедший после удаления, возвращал её после перезагрузки страницы)
+    # a task no longer among the open ones while the channel has its "open" post — a "closed" post (review 12.10: a post
+    # of the process that came out after the deletion brought it back after a page reload)
     keys = {key(w) for w in wanted}
     for k, text in have.items():
         old = json.loads(text)
@@ -115,8 +119,8 @@ def to_post(wanted, posts, sent, now, author=AUTHOR):
 
 
 def requests(posts, after):
-    """Слово владельца со страницы после поста номер after: создать задачу (по названию или командой /new-task —
-    по запросу), удалить (закрыть), вернуть удалённую, пересказать (открыт «Прогресс» или нажато «Обновить»)."""
+    """The owner's word from the page after post number after: create a task (by a title, or with the /new-task command —
+    by a request), delete (close), bring back a deleted one, summarize ("Progress" is open or "Refresh" is pressed)."""
     out = []
     for p in posts:
         seq = int(p["id"][1:])
@@ -129,14 +133,14 @@ def requests(posts, after):
         if not isinstance(data, dict):
             continue
         if data.get("kind") == "topic_create" and str(data.get("request") or "").strip() and data.get("session"):
-            # /new-task: запрос ушёл сессии, название даст процесс (engine.py: waiting)
+            # /new-task: the request went to the session, the process gives the title (engine.py: waiting)
             try:
                 at = float(data.get("at") or 0)
-            except (TypeError, ValueError):   # кривой пост не должен ронять тик (ревью 12.10)
+            except (TypeError, ValueError):   # a malformed post must not crash the tick (review 12.10)
                 continue
             out.append({"seq": seq, "request": str(data["request"]).strip(), "session": str(data["session"]),
                         "at": at,
-                        # название — по словам владельца, без дописанной страницей просьбы про jira-task (12.10)
+                        # the title — from the owner's words, without the jira-task request the page appended (12.10)
                         "name": str(data.get("name") or data["request"]).strip()})
         elif data.get("kind") == "topic_create" and str(data.get("title") or "").strip():
             out.append({"seq": seq, "title": str(data["title"]).strip()[:200]})
